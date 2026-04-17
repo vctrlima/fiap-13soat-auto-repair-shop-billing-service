@@ -1,17 +1,31 @@
-import { FastifyInstance } from 'fastify';
-import { buildRoute } from '@/main/adapters';
-import { makeGetInvoiceController } from '@/main/factories/controllers';
-import { makeProcessPayment, makeGetPaymentByWorkOrderId, makeProcessRefund } from '@/main/factories/use-cases';
-import { invoiceResponseSchema, paymentResponseSchema, errorResponseSchema } from '@/main/docs/schemas';
+import { buildRoute } from "@/main/adapters";
+import {
+  errorResponseSchema,
+  invoiceResponseSchema,
+  paymentResponseSchema,
+} from "@/main/docs/schemas";
+import {
+  makeGetInvoiceController,
+  makeGetPaymentsController,
+} from "@/main/factories/controllers";
+import {
+  makeProcessPayment,
+  makeProcessRefund,
+} from "@/main/factories/use-cases";
+import { FastifyInstance } from "fastify";
 
 export async function invoiceRoutes(fastify: FastifyInstance) {
   fastify.get(
-    '/:workOrderId',
+    "/:workOrderId",
     {
       schema: {
-        tags: ['invoice'],
-        summary: 'Get invoice by work order ID',
-        params: { type: 'object', properties: { workOrderId: { type: 'string' } }, required: ['workOrderId'] },
+        tags: ["invoice"],
+        summary: "Get invoice by work order ID",
+        params: {
+          type: "object",
+          properties: { workOrderId: { type: "string" } },
+          required: ["workOrderId"],
+        },
         response: { 200: invoiceResponseSchema, 404: errorResponseSchema },
       },
     },
@@ -21,19 +35,22 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 
 export async function paymentRoutes(fastify: FastifyInstance) {
   fastify.post(
-    '/',
+    "/",
     {
       schema: {
-        tags: ['payment'],
-        summary: 'Process a payment',
+        tags: ["payment"],
+        summary: "Process a payment",
         body: {
-          type: 'object',
-          required: ['workOrderId', 'invoiceId', 'amount', 'method'],
+          type: "object",
+          required: ["workOrderId", "invoiceId", "amount", "method"],
           properties: {
-            workOrderId: { type: 'string' },
-            invoiceId: { type: 'string' },
-            amount: { type: 'number' },
-            method: { type: 'string', enum: ['CREDIT_CARD', 'DEBIT_CARD', 'PIX', 'BANK_TRANSFER'] },
+            workOrderId: { type: "string" },
+            invoiceId: { type: "string" },
+            amount: { type: "number" },
+            method: {
+              type: "string",
+              enum: ["CREDIT_CARD", "DEBIT_CARD", "PIX", "BANK_TRANSFER"],
+            },
           },
         },
         response: { 201: paymentResponseSchema, 400: errorResponseSchema },
@@ -51,14 +68,18 @@ export async function paymentRoutes(fastify: FastifyInstance) {
   );
 
   fastify.get(
-    '/:workOrderId',
+    "/:workOrderId",
     {
       schema: {
-        tags: ['payment'],
-        summary: 'Get payments by work order ID',
-        params: { type: 'object', properties: { workOrderId: { type: 'string' } }, required: ['workOrderId'] },
+        tags: ["payment"],
+        summary: "Get payments by work order ID",
+        params: {
+          type: "object",
+          properties: { workOrderId: { type: "string" } },
+          required: ["workOrderId"],
+        },
         response: {
-          200: { type: 'array', items: paymentResponseSchema },
+          200: { type: "array", items: paymentResponseSchema },
           400: errorResponseSchema,
         },
       },
@@ -67,15 +88,19 @@ export async function paymentRoutes(fastify: FastifyInstance) {
   );
 
   fastify.post(
-    '/:workOrderId/refund',
+    "/:workOrderId/refund",
     {
       schema: {
-        tags: ['payment'],
-        summary: 'Process a refund for a work order',
-        params: { type: 'object', properties: { workOrderId: { type: 'string' } }, required: ['workOrderId'] },
+        tags: ["payment"],
+        summary: "Process a refund for a work order",
+        params: {
+          type: "object",
+          properties: { workOrderId: { type: "string" } },
+          required: ["workOrderId"],
+        },
         body: {
-          type: 'object',
-          properties: { reason: { type: 'string' } },
+          type: "object",
+          properties: { reason: { type: "string" } },
         },
         response: { 200: paymentResponseSchema, 400: errorResponseSchema },
       },
