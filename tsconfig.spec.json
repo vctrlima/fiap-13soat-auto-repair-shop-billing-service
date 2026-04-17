@@ -6,9 +6,5 @@
     "types": ["jest", "node"],
     "moduleResolution": "nodenext"
   },
-  "include": [
-    "src/**/*.spec.ts",
-    "src/**/*.test.ts",
-    "src/**/*.d.ts"
-  ]
+  "include": ["src/**/*.spec.ts", "src/**/*.test.ts", "src/**/*.d.ts"]
 }
