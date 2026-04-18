@@ -25,9 +25,11 @@ describe('GetPaymentsController', () => {
   });
 
   it('should return 500 on error', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
     const { sut, getPayments } = makeSut();
     (getPayments.getByWorkOrderId as jest.Mock).mockRejectedValue(new Error('err'));
     const result = await sut.handle({ params: { workOrderId: 'wo-1' } });
     expect(result.statusCode).toBe(500);
+    consoleSpy.mockRestore();
   });
 });
