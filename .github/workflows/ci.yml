@@ -43,7 +43,6 @@ jobs:
   sonarqube:
     name: SonarQube Analysis
     runs-on: ubuntu-latest
-    if: always()
     needs: [test]
     steps:
       - uses: actions/checkout@v4
