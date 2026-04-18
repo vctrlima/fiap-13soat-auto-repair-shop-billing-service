@@ -51,6 +51,11 @@ export class SqsEventConsumer implements EventConsumer {
         });
         const response = await this.sqsClient.send(command);
 
+        if (!response.Messages) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          continue;
+        }
+
         if (response.Messages) {
           for (const message of response.Messages) {
             try {
