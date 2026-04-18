@@ -1,11 +1,14 @@
+import { EventConsumer } from "@/application/protocols/messaging";
+import { DomainEvent } from "@/domain/events";
 import {
-  SQSClient,
-  ReceiveMessageCommand,
+  messageConsumedCounter,
+  messageProcessingFailedCounter,
+} from "@/infra/observability";
+import {
   DeleteMessageCommand,
-} from '@aws-sdk/client-sqs';
-import { EventConsumer } from '@/application/protocols/messaging';
-import { DomainEvent } from '@/domain/events';
-import { messageConsumedCounter } from '@/infra/observability';
+  ReceiveMessageCommand,
+  SQSClient,
+} from "@aws-sdk/client-sqs";
 
 export type MessageHandler = (event: DomainEvent) => Promise<void>;
 
@@ -15,7 +18,12 @@ export class SqsEventConsumer implements EventConsumer {
   private readonly handler: MessageHandler;
   private running = false;
 
-  constructor(queueUrl: string, region: string, handler: MessageHandler, endpoint?: string) {
+  constructor(
+    queueUrl: string,
+    region: string,
+    handler: MessageHandler,
+    endpoint?: string,
+  ) {
     this.queueUrl = queueUrl;
     this.handler = handler;
     this.sqsClient = new SQSClient({
@@ -46,9 +54,10 @@ export class SqsEventConsumer implements EventConsumer {
         if (response.Messages) {
           for (const message of response.Messages) {
             try {
-              const body = JSON.parse(message.Body ?? '{}');
-              // SNS wraps the message in a Message field
-              const event: DomainEvent = body.Message ? JSON.parse(body.Message) : body;
+              const body = JSON.parse(message.Body ?? "{}");
+              const event: DomainEvent = body.Message
+                ? JSON.parse(body.Message)
+                : body;
               await this.handler(event);
               messageConsumedCounter.add(1, { eventType: event.eventType });
 
@@ -61,12 +70,13 @@ export class SqsEventConsumer implements EventConsumer {
                 );
               }
             } catch (error) {
-              console.error('Error processing SQS message:', error);
+              messageProcessingFailedCounter.add(1, { queue: this.queueUrl });
+              console.error("Error processing SQS message:", error);
             }
           }
         }
       } catch (error) {
-        console.error('Error polling SQS queue:', error);
+        console.error("Error polling SQS queue:", error);
         if (this.running) {
           await new Promise((resolve) => setTimeout(resolve, 5000));
         }

@@ -42,6 +42,14 @@ export const messageConsumedCounter: Counter = meter.createCounter(
   { description: "Total messages consumed from SQS" },
 );
 
+export const messageProcessingFailedCounter: Counter = meter.createCounter(
+  "messaging.message.processing.failed",
+  {
+    description:
+      "Total messages that failed processing and will be retried or sent to DLQ",
+  },
+);
+
 export const dbQueryDuration: Histogram = meter.createHistogram(
   "db.query.duration",
   { description: "DynamoDB query duration in milliseconds", unit: "ms" },

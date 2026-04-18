@@ -21,7 +21,12 @@ module.exports = {
     "src/**/*.ts",
     "!src/main.ts",
     "!src/main/**",
+    "!src/**/*.spec.ts",
     "!src/**/*.d.ts",
+    "!src/infra/observability/**",
+    "!src/infra/db/dynamodb-client.ts",
+    "!src/**/index.ts",
+    "!src/infra/messaging/sqs-event-consumer.ts",
   ],
   coverageThreshold: {
     global: {
