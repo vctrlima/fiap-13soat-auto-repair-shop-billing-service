@@ -10,6 +10,7 @@ import {
   correlationFields,
 } from "./infra/observability";
 import { SqsEventConsumer, BillingEventHandler } from "./infra/messaging";
+import { DlqMonitor } from "./infra/messaging/dlq-monitor";
 import {
   makeCreateInvoice,
   makeGetInvoiceByWorkOrderId,
@@ -80,6 +81,13 @@ const workOrderConsumer = new SqsEventConsumer(
   env.awsRegion,
   (event) => billingEventHandler.handle(event),
   env.awsEndpoint,
+  [env.snsWorkOrderEventsTopicArn],
+);
+
+const dlqMonitor = new DlqMonitor(
+  env.awsRegion,
+  [{ name: "billing-work-order-dlq", url: env.sqsBillingWorkOrderDlqUrl }],
+  env.awsEndpoint,
 );
 
 server.listen({ port, host }, (error) => {
@@ -91,11 +99,13 @@ server.listen({ port, host }, (error) => {
     workOrderConsumer
       .start()
       .then(() => console.log("[SQS] Work-order event consumer started"));
+    dlqMonitor.start();
   }
 });
 
 const shutdown = async () => {
   console.log("[SHUTDOWN] Stopping consumers...");
+  dlqMonitor.stop();
   await workOrderConsumer.stop();
   await server.close();
   process.exit(0);

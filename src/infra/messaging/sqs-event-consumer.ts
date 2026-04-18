@@ -9,6 +9,7 @@ import {
   ReceiveMessageCommand,
   SQSClient,
 } from "@aws-sdk/client-sqs";
+import { context, propagation } from "@opentelemetry/api";
 
 export type MessageHandler = (event: DomainEvent) => Promise<void>;
 
@@ -16,6 +17,7 @@ export class SqsEventConsumer implements EventConsumer {
   private readonly sqsClient: SQSClient;
   private readonly queueUrl: string;
   private readonly handler: MessageHandler;
+  private readonly allowedTopicArns: string[];
   private running = false;
 
   constructor(
@@ -23,9 +25,11 @@ export class SqsEventConsumer implements EventConsumer {
     region: string,
     handler: MessageHandler,
     endpoint?: string,
+    allowedTopicArns?: string[],
   ) {
     this.queueUrl = queueUrl;
     this.handler = handler;
+    this.allowedTopicArns = allowedTopicArns ?? [];
     this.sqsClient = new SQSClient({
       region,
       ...(endpoint ? { endpoint } : {}),
@@ -60,10 +64,36 @@ export class SqsEventConsumer implements EventConsumer {
           for (const message of response.Messages) {
             try {
               const body = JSON.parse(message.Body ?? "{}");
+
+              if (
+                body.TopicArn &&
+                this.allowedTopicArns.length > 0 &&
+                !this.allowedTopicArns.includes(body.TopicArn)
+              ) {
+                console.warn(
+                  `[SQS] Rejected message from unexpected topic: ${body.TopicArn}`,
+                );
+                continue;
+              }
+
+              const carrier: Record<string, string> = {};
+              const traceparent =
+                body.MessageAttributes?.traceparent?.Value;
+              if (traceparent) {
+                carrier.traceparent = traceparent;
+              }
+              const parentContext = propagation.extract(
+                context.active(),
+                carrier,
+              );
+
               const event: DomainEvent = body.Message
                 ? JSON.parse(body.Message)
                 : body;
-              await this.handler(event);
+
+              await context.with(parentContext, () =>
+                this.handler(event),
+              );
               messageConsumedCounter.add(1, { eventType: event.eventType });
 
               if (message.ReceiptHandle) {

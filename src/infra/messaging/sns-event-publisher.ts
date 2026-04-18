@@ -1,7 +1,8 @@
-import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { EventPublisher } from '@/application/protocols/messaging';
 import { DomainEvent } from '@/domain/events';
 import { messagePublishedCounter } from '@/infra/observability';
+import { PublishCommand, SNSClient } from '@aws-sdk/client-sns';
+import { context, propagation } from '@opentelemetry/api';
 
 export class SnsEventPublisher implements EventPublisher {
   private readonly snsClient: SNSClient;
@@ -16,6 +17,9 @@ export class SnsEventPublisher implements EventPublisher {
   }
 
   async publish<T>(event: DomainEvent<T>): Promise<void> {
+    const carrier: Record<string, string> = {};
+    propagation.inject(context.active(), carrier);
+
     const command = new PublishCommand({
       TopicArn: this.topicArn,
       Message: JSON.stringify(event),
@@ -28,6 +32,14 @@ export class SnsEventPublisher implements EventPublisher {
           DataType: 'String',
           StringValue: event.source,
         },
+        ...(carrier.traceparent
+          ? {
+              traceparent: {
+                DataType: 'String',
+                StringValue: carrier.traceparent,
+              },
+            }
+          : {}),
       },
     });
     await this.snsClient.send(command);

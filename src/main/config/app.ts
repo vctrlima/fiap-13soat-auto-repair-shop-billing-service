@@ -1,4 +1,6 @@
+import { registerAuthHook } from "@/main/middlewares/auth-hook";
 import { invoiceRoutes, paymentRoutes } from "@/main/routes";
+import { webhookRoutes } from "@/main/routes/webhook-routes";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
@@ -11,13 +13,32 @@ import env from "./env";
 export type AppOptions = object;
 
 export async function app(fastify: FastifyInstance, _opts: AppOptions) {
-  fastify.register(helmet, { contentSecurityPolicy: false });
+  fastify.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+  });
   fastify.register(rateLimit, { max: 100, timeWindow: "1 minute" });
   fastify.register(fastifySwagger, docs);
   fastify.register(cors, {
-    origin: env.corsOrigin || "*",
+    origin: env.corsOrigin
+      ? env.corsOrigin.split(",").map((o) => o.trim())
+      : "*",
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    credentials: true,
   });
+
+  if (env.jwtSecret) {
+    registerAuthHook(fastify, env.jwtSecret);
+  }
 
   fastify.setErrorHandler((error, request, reply) => {
     request.log.error({ err: error }, "Unhandled error");
@@ -32,6 +53,7 @@ export async function app(fastify: FastifyInstance, _opts: AppOptions) {
 
   fastify.register(invoiceRoutes, { prefix: "/api/invoices" });
   fastify.register(paymentRoutes, { prefix: "/api/payments" });
+  fastify.register(webhookRoutes, { prefix: "/api/webhooks" });
 
   fastify.get("/health", async () => ({
     status: "UP",

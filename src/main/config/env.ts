@@ -14,10 +14,17 @@ const envSchema = z.object({
   SQS_BILLING_WORK_ORDER_QUEUE_URL: z
     .string()
     .default("http://localhost:4566/000000000000/billing-work-order-queue"),
+  SNS_WORK_ORDER_EVENTS_TOPIC_ARN: z
+    .string()
+    .default("arn:aws:sns:us-east-2:000000000000:work-order-events"),
+  SQS_BILLING_WORK_ORDER_DLQ_URL: z
+    .string()
+    .default("http://localhost:4566/000000000000/billing-work-order-queue-dlq"),
   DYNAMODB_INVOICES_TABLE: z.string().default("Invoices"),
   DYNAMODB_PAYMENTS_TABLE: z.string().default("Payments"),
   MERCADO_PAGO_ACCESS_TOKEN: z.string().optional(),
   CORS_ORIGIN: z.string().optional(),
+  JWT_ACCESS_TOKEN_SECRET: z.string().optional(),
 });
 
 const parsed = envSchema.parse(process.env);
@@ -29,8 +36,11 @@ export default {
   awsEndpoint: parsed.AWS_ENDPOINT_URL,
   snsPaymentEventsTopicArn: parsed.SNS_PAYMENT_EVENTS_TOPIC_ARN,
   sqsBillingWorkOrderQueueUrl: parsed.SQS_BILLING_WORK_ORDER_QUEUE_URL,
+  snsWorkOrderEventsTopicArn: parsed.SNS_WORK_ORDER_EVENTS_TOPIC_ARN,
+  sqsBillingWorkOrderDlqUrl: parsed.SQS_BILLING_WORK_ORDER_DLQ_URL,
   dynamodbInvoicesTable: parsed.DYNAMODB_INVOICES_TABLE,
   dynamodbPaymentsTable: parsed.DYNAMODB_PAYMENTS_TABLE,
   mercadoPagoAccessToken: parsed.MERCADO_PAGO_ACCESS_TOKEN,
   corsOrigin: parsed.CORS_ORIGIN,
+  jwtSecret: parsed.JWT_ACCESS_TOKEN_SECRET,
 };

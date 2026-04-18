@@ -29,6 +29,9 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
         external_reference: params.externalReference,
         payer: { email: params.payerEmail ?? "customer@autorepairshop.com" },
       },
+      requestOptions: {
+        idempotencyKey: params.externalReference,
+      },
     });
 
     const statusMap: Record<string, "approved" | "rejected" | "pending"> = {
@@ -51,6 +54,9 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
     const response = await this.refundClient.create({
       payment_id: Number(params.gatewayPaymentId),
       body: params.amount ? { amount: params.amount } : {},
+      requestOptions: {
+        idempotencyKey: `refund-${params.gatewayPaymentId}`,
+      },
     });
 
     return {
