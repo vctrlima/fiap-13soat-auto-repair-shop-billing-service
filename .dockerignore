@@ -12,7 +12,5 @@ docker-compose.yml
 .dockerignore
 .gitignore
 .eslintrc*
-eslint.config.*
 jest.config.*
-tsconfig*.json
 sonar-project.properties
