@@ -23,8 +23,11 @@ const envSchema = z.object({
   DYNAMODB_INVOICES_TABLE: z.string().default("Invoices"),
   DYNAMODB_PAYMENTS_TABLE: z.string().default("Payments"),
   MERCADO_PAGO_ACCESS_TOKEN: z.string().optional(),
+  MERCADO_PAGO_WEBHOOK_SECRET: z.string().optional(),
   CORS_ORIGIN: z.string().optional(),
-  JWT_ACCESS_TOKEN_SECRET: z.string().optional(),
+  JWT_ACCESS_TOKEN_SECRET: z.string({
+    error: "JWT_ACCESS_TOKEN_SECRET is required. Auth cannot be disabled.",
+  }),
 });
 
 const parsed = envSchema.parse(process.env);
@@ -41,6 +44,7 @@ export default {
   dynamodbInvoicesTable: parsed.DYNAMODB_INVOICES_TABLE,
   dynamodbPaymentsTable: parsed.DYNAMODB_PAYMENTS_TABLE,
   mercadoPagoAccessToken: parsed.MERCADO_PAGO_ACCESS_TOKEN,
+  mercadoPagoWebhookSecret: parsed.MERCADO_PAGO_WEBHOOK_SECRET,
   corsOrigin: parsed.CORS_ORIGIN,
   jwtSecret: parsed.JWT_ACCESS_TOKEN_SECRET,
 };

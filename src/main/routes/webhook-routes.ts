@@ -1,3 +1,8 @@
+import env from "@/main/config/env";
+import {
+  makeGetInvoiceByWorkOrderId,
+  makeProcessPayment,
+} from "@/main/factories/use-cases";
 import { FastifyInstance } from "fastify";
 import crypto from "node:crypto";
 
@@ -22,7 +27,7 @@ export async function webhookRoutes(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const webhookSecret = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
+      const webhookSecret = env.mercadoPagoWebhookSecret;
       if (webhookSecret) {
         const signature = request.headers["x-signature"] as string;
         if (!signature) {
@@ -48,7 +53,7 @@ export async function webhookRoutes(fastify: FastifyInstance) {
           .update(manifest)
           .digest("hex");
 
-        if (hmac !== v1) {
+        if (!crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(v1 ?? ""))) {
           return reply.status(401).send({ error: "Invalid signature" });
         }
       }
@@ -60,12 +65,57 @@ export async function webhookRoutes(fastify: FastifyInstance) {
         return reply.status(200).send({ received: true });
       }
 
-      fastify.log.info(
-        `[Webhook] Mercado Pago payment notification: action=${action}, paymentId=${data?.id}`,
-      );
-
-      // Acknowledge immediately — process async
+      // Acknowledge immediately
       reply.status(200).send({ received: true });
+
+      // Process asynchronously
+      try {
+        const externalRef = data?.external_reference as string | undefined;
+        if (!externalRef) {
+          fastify.log.warn(
+            { paymentId: data?.id },
+            "Webhook: no external_reference",
+          );
+          return;
+        }
+
+        const [workOrderId, invoiceId] = externalRef.split(":");
+        if (!workOrderId || !invoiceId) {
+          fastify.log.warn(
+            { externalRef },
+            "Webhook: malformed external_reference",
+          );
+          return;
+        }
+
+        const status = action === "payment.approved" ? "COMPLETED" : "FAILED";
+
+        const processPayment = makeProcessPayment();
+        const invoice = await makeGetInvoiceByWorkOrderId().getByWorkOrderId({
+          workOrderId,
+        });
+        if (!invoice) {
+          fastify.log.warn({ workOrderId }, "Webhook: no invoice found");
+          return;
+        }
+
+        await processPayment.process({
+          workOrderId,
+          invoiceId,
+          amount: invoice.amount,
+          method: "PIX",
+        });
+
+        fastify.log.info(
+          { workOrderId, paymentId: data?.id, status },
+          "Webhook: payment processed",
+        );
+      } catch (error) {
+        fastify.log.error(
+          { err: error, paymentId: data?.id },
+          "Webhook: processing failed",
+        );
+      }
     },
   );
 }

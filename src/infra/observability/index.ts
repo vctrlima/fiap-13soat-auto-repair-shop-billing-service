@@ -1,3 +1,4 @@
+export { logger } from "./logger";
 export {
   dbQueryDuration,
   dbQueryErrorCounter,

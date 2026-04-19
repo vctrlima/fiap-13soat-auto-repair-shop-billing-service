@@ -1,16 +1,12 @@
 import { DbProcessPayment } from "@/application/use-cases";
 import { DynamoPaymentRepository } from "@/infra/db";
 import { MercadoPagoPaymentGateway } from "@/infra/gateway";
-import { SnsEventPublisher } from "@/infra/messaging";
+import { DynamoOutboxEventPublisher } from "@/infra/messaging/dynamo-outbox-event-publisher";
 import env from "@/main/config/env";
 
 export const makeProcessPayment = () => {
   const paymentRepository = new DynamoPaymentRepository();
-  const eventPublisher = new SnsEventPublisher(
-    env.snsPaymentEventsTopicArn,
-    env.awsRegion,
-    env.awsEndpoint,
-  );
+  const eventPublisher = new DynamoOutboxEventPublisher();
   const paymentGateway = env.mercadoPagoAccessToken
     ? new MercadoPagoPaymentGateway(env.mercadoPagoAccessToken)
     : undefined;

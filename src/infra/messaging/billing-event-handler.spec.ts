@@ -1,3 +1,18 @@
+jest.mock("@/infra/observability", () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+    child: jest.fn().mockReturnThis(),
+  },
+}));
+
+const mockDynamoSend = jest.fn().mockResolvedValue({ Item: undefined });
+jest.mock("@/infra/db/dynamodb-client", () => ({
+  dynamodb: { send: (...args: any[]) => mockDynamoSend(...args) },
+}));
+
 import type { EventType } from "@/domain/events/domain-event";
 import {
   CreateInvoice,
@@ -115,10 +130,12 @@ describe("BillingEventHandler", () => {
   describe("Unknown event", () => {
     it("should log for unhandled events", async () => {
       const { sut } = makeSut();
-      const logSpy = jest.spyOn(console, "log").mockImplementation();
       await sut.handle(makeEvent("UnknownEvent" as EventType, {}));
-      expect(logSpy).toHaveBeenCalled();
-      logSpy.mockRestore();
+      const { logger } = jest.requireMock("@/infra/observability");
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: "UnknownEvent" }),
+        expect.any(String),
+      );
     });
   });
 });

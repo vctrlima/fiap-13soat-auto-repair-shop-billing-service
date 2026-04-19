@@ -4,7 +4,18 @@ jest.mock("@aws-sdk/client-sqs", () => ({
   GetQueueAttributesCommand: jest.fn().mockImplementation((params) => params),
 }));
 
+jest.mock("@/infra/observability", () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+    child: jest.fn().mockReturnThis(),
+  },
+}));
+
 import { DlqMonitor } from "@/infra/messaging/dlq-monitor";
+import { logger as mockLogger } from "@/infra/observability";
 
 describe("DlqMonitor", () => {
   beforeEach(() => {
@@ -38,74 +49,68 @@ describe("DlqMonitor", () => {
     mockSend.mockResolvedValue({
       Attributes: { ApproximateNumberOfMessages: "5" },
     });
-    const errorSpy = jest.spyOn(console, "error").mockImplementation();
     const monitor = new DlqMonitor(
       "us-east-2",
       dlqUrls,
       "http://localhost:4566",
     );
     await monitor.checkDlqs();
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("billing-work-order-dlq has 5 messages"),
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ dlq: "billing-work-order-dlq", messageCount: 5 }),
+      expect.any(String),
     );
-    errorSpy.mockRestore();
   });
 
   it("should not log when DLQ is empty", async () => {
     mockSend.mockResolvedValue({
       Attributes: { ApproximateNumberOfMessages: "0" },
     });
-    const errorSpy = jest.spyOn(console, "error").mockImplementation();
     const monitor = new DlqMonitor(
       "us-east-2",
       dlqUrls,
       "http://localhost:4566",
     );
     await monitor.checkDlqs();
-    expect(errorSpy).not.toHaveBeenCalled();
-    errorSpy.mockRestore();
+    expect(mockLogger.error).not.toHaveBeenCalled();
   });
 
   it("should handle missing attributes", async () => {
     mockSend.mockResolvedValue({ Attributes: {} });
-    const errorSpy = jest.spyOn(console, "error").mockImplementation();
     const monitor = new DlqMonitor(
       "us-east-2",
       dlqUrls,
       "http://localhost:4566",
     );
     await monitor.checkDlqs();
-    expect(errorSpy).not.toHaveBeenCalled();
-    errorSpy.mockRestore();
+    expect(mockLogger.error).not.toHaveBeenCalled();
   });
 
   it("should handle SQS errors gracefully", async () => {
     mockSend.mockRejectedValue(new Error("SQS Error"));
-    const errorSpy = jest.spyOn(console, "error").mockImplementation();
     const monitor = new DlqMonitor(
       "us-east-2",
       dlqUrls,
       "http://localhost:4566",
     );
     await monitor.checkDlqs();
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Failed to check billing-work-order-dlq"),
-      expect.any(Error),
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ dlq: "billing-work-order-dlq" }),
+      expect.any(String),
     );
-    errorSpy.mockRestore();
   });
 
   it("should start and stop polling", () => {
-    const logSpy = jest.spyOn(console, "log").mockImplementation();
     const monitor = new DlqMonitor(
       "us-east-2",
       dlqUrls,
       "http://localhost:4566",
     );
     monitor.start(30_000);
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Started"));
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      expect.objectContaining({ dlqCount: 1, intervalMs: 30_000 }),
+      expect.any(String),
+    );
     monitor.stop();
-    logSpy.mockRestore();
   });
 
   it("should handle stop when not started", () => {

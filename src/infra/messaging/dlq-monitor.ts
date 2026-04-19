@@ -1,3 +1,4 @@
+import { logger } from "@/infra/observability";
 import { GetQueueAttributesCommand, SQSClient } from "@aws-sdk/client-sqs";
 
 export class DlqMonitor {
@@ -20,11 +21,12 @@ export class DlqMonitor {
   start(intervalMs = 60_000): void {
     this.intervalId = setInterval(() => {
       this.checkDlqs().catch((err) =>
-        console.error("[DLQ Monitor] Error:", err),
+        logger.error({ err }, "DLQ Monitor check failed"),
       );
     }, intervalMs);
-    console.log(
-      `[DLQ Monitor] Started — checking ${this.dlqUrls.length} DLQs every ${intervalMs / 1000}s`,
+    logger.info(
+      { dlqCount: this.dlqUrls.length, intervalMs },
+      "DLQ Monitor started",
     );
   }
 
@@ -51,12 +53,13 @@ export class DlqMonitor {
         );
 
         if (count > 0) {
-          console.error(
-            `[DLQ Monitor] ALERT: ${dlq.name} has ${count} messages awaiting review`,
+          logger.error(
+            { dlq: dlq.name, messageCount: count },
+            "DLQ has messages awaiting review",
           );
         }
       } catch (error) {
-        console.error(`[DLQ Monitor] Failed to check ${dlq.name}:`, error);
+        logger.error({ err: error, dlq: dlq.name }, "Failed to check DLQ");
       }
     }
   }

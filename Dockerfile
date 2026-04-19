@@ -31,7 +31,7 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/yarn.lock ./
 
 RUN yarn install --production --frozen-lockfile --network-timeout 300000 && \
-    yarn add tsx tsconfig-paths module-alias
+    yarn add tsconfig-paths module-alias
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/tsconfig*.json ./

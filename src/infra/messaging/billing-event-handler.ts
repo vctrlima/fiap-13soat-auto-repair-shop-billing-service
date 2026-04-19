@@ -1,5 +1,16 @@
-import { DomainEvent, WorkOrderEventData } from '@/domain/events';
-import { CreateInvoice, UpdateInvoiceStatus, ProcessRefund, GetInvoiceByWorkOrderId } from '@/domain/use-cases';
+import { DomainEvent, WorkOrderEventData } from "@/domain/events";
+import {
+  CreateInvoice,
+  GetInvoiceByWorkOrderId,
+  ProcessRefund,
+  UpdateInvoiceStatus,
+} from "@/domain/use-cases";
+import { dynamodb } from "@/infra/db/dynamodb-client";
+import { logger } from "@/infra/observability";
+import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+
+const PROCESSED_EVENTS_TABLE =
+  process.env.DYNAMODB_PROCESSED_EVENTS_TABLE || "ProcessedEvents";
 
 export class BillingEventHandler {
   constructor(
@@ -10,21 +21,55 @@ export class BillingEventHandler {
   ) {}
 
   async handle(event: DomainEvent): Promise<void> {
+    const existing = await dynamodb.send(
+      new GetCommand({
+        TableName: PROCESSED_EVENTS_TABLE,
+        Key: { messageId: event.eventId },
+      }),
+    );
+    if (existing.Item) {
+      logger.info(
+        { eventId: event.eventId, eventType: event.eventType },
+        "Duplicate event, skipping",
+      );
+      return;
+    }
+
     switch (event.eventType) {
-      case 'WorkOrderApproved':
-        await this.handleWorkOrderApproved(event as DomainEvent<WorkOrderEventData>);
+      case "WorkOrderApproved":
+        await this.handleWorkOrderApproved(
+          event as DomainEvent<WorkOrderEventData>,
+        );
         break;
-      case 'WorkOrderCanceled':
-        await this.handleWorkOrderCanceled(event as DomainEvent<WorkOrderEventData>);
+      case "WorkOrderCanceled":
+        await this.handleWorkOrderCanceled(
+          event as DomainEvent<WorkOrderEventData>,
+        );
         break;
       default:
-        console.log(`[BillingEventHandler] Ignoring event type: ${event.eventType}`);
+        logger.info(
+          { eventType: event.eventType },
+          "Ignoring unhandled event type",
+        );
+        return;
     }
+
+    await dynamodb.send(
+      new PutCommand({
+        TableName: PROCESSED_EVENTS_TABLE,
+        Item: {
+          messageId: event.eventId,
+          processedAt: new Date().toISOString(),
+        },
+      }),
+    );
   }
 
-  private async handleWorkOrderApproved(event: DomainEvent<WorkOrderEventData>): Promise<void> {
+  private async handleWorkOrderApproved(
+    event: DomainEvent<WorkOrderEventData>,
+  ): Promise<void> {
     const { workOrderId, customerId, budget, services, parts } = event.data;
-    console.log(`[BillingEventHandler] WorkOrderApproved — creating invoice for WO ${workOrderId}`);
+    logger.info({ workOrderId }, "WorkOrderApproved — creating invoice");
 
     await this.createInvoice.create({
       workOrderId,
@@ -47,24 +92,29 @@ export class BillingEventHandler {
     });
   }
 
-  private async handleWorkOrderCanceled(event: DomainEvent<WorkOrderEventData>): Promise<void> {
+  private async handleWorkOrderCanceled(
+    event: DomainEvent<WorkOrderEventData>,
+  ): Promise<void> {
     const { workOrderId } = event.data;
-    console.log(`[BillingEventHandler] WorkOrderCanceled — canceling invoice for WO ${workOrderId}`);
+    logger.info({ workOrderId }, "WorkOrderCanceled — canceling invoice");
 
     const invoice = await this.getInvoice.getByWorkOrderId({ workOrderId });
     if (!invoice) {
-      console.log(`[BillingEventHandler] No invoice found for WO ${workOrderId}, skipping`);
+      logger.info({ workOrderId }, "No invoice found, skipping cancellation");
       return;
     }
 
-    if (invoice.status === 'PAID') {
-      await this.processRefund.refund({ workOrderId, reason: 'Work order canceled' });
+    if (invoice.status === "PAID") {
+      await this.processRefund.refund({
+        workOrderId,
+        reason: "Work order canceled",
+      });
     }
 
     await this.updateInvoiceStatus.updateStatus({
       workOrderId,
       invoiceId: invoice.invoiceId,
-      status: 'CANCELED',
+      status: "CANCELED",
     });
   }
 }

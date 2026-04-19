@@ -1,6 +1,13 @@
 jest.mock("@/infra/observability", () => ({
   messageConsumedCounter: { add: jest.fn() },
   messageProcessingFailedCounter: { add: jest.fn() },
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+    child: jest.fn().mockReturnThis(),
+  },
 }));
 
 const mockSend = jest.fn();
@@ -128,14 +135,13 @@ describe("SqsEventConsumer", () => {
       return Promise.resolve({ Messages: undefined });
     });
 
-    const consoleSpy = jest.spyOn(console, "error").mockImplementation();
     const sut = new SqsEventConsumer("http://queue", "us-east-2", handler);
     await sut.start();
     await new Promise((r) => setTimeout(r, 50));
     await sut.stop();
 
-    expect(consoleSpy).toHaveBeenCalled();
-    consoleSpy.mockRestore();
+    const { logger } = jest.requireMock("@/infra/observability");
+    expect(logger.error).toHaveBeenCalled();
   });
 
   it("should handle polling errors", async () => {
@@ -143,13 +149,12 @@ describe("SqsEventConsumer", () => {
       .mockRejectedValueOnce(new Error("network"))
       .mockResolvedValue({ Messages: undefined });
 
-    const consoleSpy = jest.spyOn(console, "error").mockImplementation();
     const sut = new SqsEventConsumer("http://queue", "us-east-2", handler);
     await sut.start();
     await new Promise((r) => setTimeout(r, 50));
     await sut.stop();
 
-    expect(consoleSpy).toHaveBeenCalled();
-    consoleSpy.mockRestore();
+    const { logger } = jest.requireMock("@/infra/observability");
+    expect(logger.error).toHaveBeenCalled();
   });
 });

@@ -1,23 +1,25 @@
 import "./infra/observability/tracing";
 
 import Fastify from "fastify";
+import { randomUUID } from "node:crypto";
+import { BillingEventHandler, SqsEventConsumer } from "./infra/messaging";
+import { DlqMonitor } from "./infra/messaging/dlq-monitor";
+import { DynamoOutboxProcessor } from "./infra/messaging/dynamo-outbox-processor";
+import { SnsEventPublisher } from "./infra/messaging/sns-event-publisher";
+import {
+  correlationFields,
+  getRequestContext,
+  httpRequestCounter,
+  httpRequestDuration,
+} from "./infra/observability";
 import { app } from "./main/config/app";
 import env from "./main/config/env";
 import {
-  httpRequestCounter,
-  httpRequestDuration,
-  getRequestContext,
-  correlationFields,
-} from "./infra/observability";
-import { SqsEventConsumer, BillingEventHandler } from "./infra/messaging";
-import { DlqMonitor } from "./infra/messaging/dlq-monitor";
-import {
   makeCreateInvoice,
   makeGetInvoiceByWorkOrderId,
-  makeUpdateInvoiceStatus,
   makeProcessRefund,
+  makeUpdateInvoiceStatus,
 } from "./main/factories/use-cases";
-import { randomUUID } from "node:crypto";
 
 const host = process.env.HOST ?? "localhost";
 const port = Number(env.port);
@@ -90,6 +92,14 @@ const dlqMonitor = new DlqMonitor(
   env.awsEndpoint,
 );
 
+const outboxProcessor = new DynamoOutboxProcessor(
+  new SnsEventPublisher(
+    env.snsPaymentEventsTopicArn,
+    env.awsRegion,
+    env.awsEndpoint,
+  ),
+);
+
 server.listen({ port, host }, (error) => {
   if (error) {
     server.log.error(error);
@@ -100,12 +110,14 @@ server.listen({ port, host }, (error) => {
       .start()
       .then(() => console.log("[SQS] Work-order event consumer started"));
     dlqMonitor.start();
+    outboxProcessor.start();
   }
 });
 
 const shutdown = async () => {
   console.log("[SHUTDOWN] Stopping consumers...");
   dlqMonitor.stop();
+  outboxProcessor.stop();
   await workOrderConsumer.stop();
   await server.close();
   process.exit(0);

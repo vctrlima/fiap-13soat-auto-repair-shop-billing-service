@@ -19,12 +19,12 @@ services:
     container_name: billing-service
     ports:
       - "3003:3003"
+    env_file:
+      - .env
     environment:
       SERVER_HOST: http://localhost:3003
       SERVER_PORT: 3003
       PASSWORD_HASH_SALT: 10
-      JWT_ACCESS_TOKEN_SECRET: 5b328d283d9a9982596057659c71e3a5
-      JWT_REFRESH_TOKEN_SECRET: 8b4e55de6e8b8401cfd56613f356c7cd
       NODE_ENV: production
       OTEL_ENABLED: "true"
       OTEL_SERVICE_NAME: billing-service
@@ -46,7 +46,7 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.120.0
     container_name: otel-collector
-    command: ["--config=/etc/otel-collector/config.yaml"]
+    command: [ "--config=/etc/otel-collector/config.yaml" ]
     ports:
       - "4317:4317"
       - "4318:4318"
