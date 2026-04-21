@@ -12,6 +12,7 @@
 - [6. Execução e Setup](#6-execução-e-setup)
 - [7. Pontos de Atenção](#7-pontos-de-atenção)
 - [8. Boas Práticas e Padrões](#8-boas-práticas-e-padrões)
+- [9. Repositórios Relacionados](#9-repositórios-relacionados)
 
 ---
 
@@ -346,3 +347,18 @@ Em caso de falha repetida do Mercado Pago, o Circuit Breaker abre e bloqueia cha
 - Handlers de erro globais Fastify com respostas RFC 7807
 - Erros de DynamoDB e SNS capturados e logados sem expor detalhes ao cliente
 - Fallback automático para processamento interno em falha de gateway externo
+
+---
+
+## 9. Repositórios Relacionados
+
+Este repositório faz parte do ecossistema **Auto Repair Shop**. Abaixo estão os demais repositórios da arquitetura final:
+
+| Repositório                                                                                                                                | Descrição                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| [fiap-13soat-auto-repair-shop-execution-service](https://github.com/vctrlima/fiap-13soat-auto-repair-shop-execution-service)               | Rastreamento de execução dos serviços e notificações por e-mail |
+| [fiap-13soat-auto-repair-shop-work-order-service](https://github.com/vctrlima/fiap-13soat-auto-repair-shop-work-order-service)             | Ordens de serviço e Saga Orchestrator                           |
+| [fiap-13soat-auto-repair-shop-customer-vehicle-service](https://github.com/vctrlima/fiap-13soat-auto-repair-shop-customer-vehicle-service) | Cadastro de clientes e veículos                                 |
+| [fiap-13soat-auto-repair-shop-lambda](https://github.com/vctrlima/fiap-13soat-auto-repair-shop-lambda)                                     | Autenticação de clientes por CPF (AWS Lambda)                   |
+| [fiap-13soat-auto-repair-shop-k8s](https://github.com/vctrlima/fiap-13soat-auto-repair-shop-k8s)                                           | Infraestrutura AWS — VPC, EKS, ALB, API Gateway                 |
+| [fiap-13soat-auto-repair-shop-db](https://github.com/vctrlima/fiap-13soat-auto-repair-shop-db)                                             | Banco de dados RDS PostgreSQL e migrações Flyway                |
