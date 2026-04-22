@@ -65,10 +65,8 @@ export async function webhookRoutes(fastify: FastifyInstance) {
         return reply.status(200).send({ received: true });
       }
 
-      // Acknowledge immediately
       reply.status(200).send({ received: true });
 
-      // Process asynchronously
       try {
         const externalRef = data?.external_reference as string | undefined;
         if (!externalRef) {
