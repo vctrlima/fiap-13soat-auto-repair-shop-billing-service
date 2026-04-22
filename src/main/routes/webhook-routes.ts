@@ -11,7 +11,7 @@ export async function webhookRoutes(fastify: FastifyInstance) {
     "/mercadopago",
     {
       schema: {
-        tags: ["webhook"],
+        tags: ["Webhook"],
         summary: "Mercado Pago IPN webhook",
         body: {
           type: "object",
