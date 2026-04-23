@@ -53,7 +53,7 @@ export async function app(fastify: FastifyInstance, _opts: AppOptions) {
   fastify.register(paymentRoutes, { prefix: "/api/payments" });
   fastify.register(webhookRoutes, { prefix: "/api/webhooks" });
 
-  fastify.get("/health", async () => ({
+  fastify.get("/health", { schema: { security: [] } }, async () => ({
     status: "UP",
     timestamp: new Date().toISOString(),
   }));

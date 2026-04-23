@@ -13,6 +13,7 @@ export async function webhookRoutes(fastify: FastifyInstance) {
       schema: {
         tags: ["Webhook"],
         summary: "Mercado Pago IPN webhook",
+        security: [],
         body: {
           type: "object",
           properties: {
