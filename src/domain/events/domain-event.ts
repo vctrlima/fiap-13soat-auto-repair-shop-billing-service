@@ -39,6 +39,7 @@ export interface PaymentEventData {
   amount: number;
   status: string;
   failureReason?: string;
+  customerEmail?: string;
 }
 
 export interface ExecutionEventData {
@@ -47,4 +48,5 @@ export interface ExecutionEventData {
   status: string;
   failureReason?: string;
   completedServices?: string[];
+  customerEmail?: string;
 }

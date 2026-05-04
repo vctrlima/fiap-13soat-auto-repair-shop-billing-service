@@ -1,6 +1,6 @@
 import { dynamodb } from "@/infra/db/dynamodb-client";
 import { logger } from "@/infra/observability";
-import { QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { ScanCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { SnsEventPublisher } from "./sns-event-publisher";
 
 const TABLE_NAME = process.env.DYNAMODB_OUTBOX_TABLE || "OutboxEvents";
@@ -31,10 +31,9 @@ export class DynamoOutboxProcessor {
 
   async processOutbox(): Promise<void> {
     const result = await dynamodb.send(
-      new QueryCommand({
+      new ScanCommand({
         TableName: TABLE_NAME,
-        IndexName: "published-createdAt-index",
-        KeyConditionExpression: "published = :f",
+        FilterExpression: "published = :f",
         ExpressionAttributeValues: { ":f": false },
         Limit: 50,
       }),

@@ -4,6 +4,7 @@ export interface Invoice {
   workOrderId: string;
   invoiceId: string;
   customerId: string;
+  customerEmail?: string;
   amount: number;
   status: InvoiceStatus;
   services: InvoiceLineItem[];

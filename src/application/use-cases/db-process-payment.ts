@@ -37,7 +37,7 @@ export class DbProcessPayment implements ProcessPayment {
             gatewayPaymentId,
           } as any);
           paymentFailedCounter.add(1);
-          await this.publishEvent("PaymentFailed", payment);
+          await this.publishEvent("PaymentFailed", payment, params.customerEmail);
           return payment;
         }
       } catch (error: any) {
@@ -58,13 +58,14 @@ export class DbProcessPayment implements ProcessPayment {
       paymentFailedCounter.add(1);
     }
 
-    await this.publishEvent(eventType, payment);
+    await this.publishEvent(eventType, payment, params.customerEmail);
     return payment;
   }
 
   private async publishEvent(
     eventType: EventType,
     payment: ProcessPayment.Result,
+    customerEmail?: string,
   ): Promise<void> {
     const event: DomainEvent<PaymentEventData> = {
       eventType,
@@ -79,6 +80,7 @@ export class DbProcessPayment implements ProcessPayment {
         amount: payment.amount,
         status: payment.status,
         failureReason: payment.failureReason,
+        customerEmail,
       },
     };
     await this.eventPublisher.publish(event);

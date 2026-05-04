@@ -20,6 +20,7 @@ export class DynamoInvoiceRepository
       workOrderId: params.workOrderId,
       invoiceId: randomUUID(),
       customerId: params.customerId,
+      customerEmail: params.customerEmail,
       amount: params.amount,
       status: 'PENDING',
       services: params.services,

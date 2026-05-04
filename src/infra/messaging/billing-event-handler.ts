@@ -46,6 +46,9 @@ export class BillingEventHandler {
           event as DomainEvent<WorkOrderEventData>,
         );
         break;
+      case "RefundRequested":
+        await this.handleRefundRequested(event);
+        break;
       default:
         logger.info(
           { eventType: event.eventType },
@@ -68,12 +71,13 @@ export class BillingEventHandler {
   private async handleWorkOrderApproved(
     event: DomainEvent<WorkOrderEventData>,
   ): Promise<void> {
-    const { workOrderId, customerId, budget, services, parts } = event.data;
+    const { workOrderId, customerId, customerEmail, budget, services, parts } = event.data;
     logger.info({ workOrderId }, "WorkOrderApproved — creating invoice");
 
     await this.createInvoice.create({
       workOrderId,
       customerId,
+      customerEmail,
       amount: budget ?? 0,
       services: (services ?? []).map((s) => ({
         id: s.id,
@@ -90,6 +94,25 @@ export class BillingEventHandler {
         totalPrice: p.price * p.quantity,
       })),
     });
+  }
+
+  private async handleRefundRequested(
+    event: DomainEvent,
+  ): Promise<void> {
+    const { workOrderId, failureReason } = event.data;
+    logger.info({ workOrderId }, "RefundRequested — processing refund");
+
+    try {
+      await this.processRefund.refund({
+        workOrderId,
+        reason: failureReason ?? "Execution failed",
+      });
+    } catch (err: any) {
+      logger.info(
+        { workOrderId, error: err.message },
+        "Refund skipped — no completed payment found",
+      );
+    }
   }
 
   private async handleWorkOrderCanceled(

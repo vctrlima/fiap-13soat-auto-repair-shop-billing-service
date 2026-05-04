@@ -9,6 +9,7 @@ import {
   makeGetPaymentsController,
 } from "@/main/factories/controllers";
 import {
+  makeGetInvoiceByWorkOrderId,
   makeProcessPayment,
   makeProcessRefund,
 } from "@/main/factories/use-cases";
@@ -58,8 +59,12 @@ export async function paymentRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       try {
+        const { workOrderId, invoiceId, amount, method } = request.body as any;
+        const getInvoice = makeGetInvoiceByWorkOrderId();
+        const invoice = await getInvoice.getByWorkOrderId({ workOrderId }).catch(() => null);
+        const customerEmail = (invoice as any)?.customerEmail as string | undefined;
         const processPayment = makeProcessPayment();
-        const result = await processPayment.process(request.body as any);
+        const result = await processPayment.process({ workOrderId, invoiceId, amount, method, customerEmail });
         reply.status(201).send(result);
       } catch (error: any) {
         reply.status(400).send({ error: error.message });

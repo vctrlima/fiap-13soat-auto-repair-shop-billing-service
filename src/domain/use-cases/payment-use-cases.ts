@@ -10,6 +10,7 @@ export namespace ProcessPayment {
     invoiceId: string;
     amount: number;
     method: PaymentMethod;
+    customerEmail?: string;
   };
   export type Result = Payment;
 }
